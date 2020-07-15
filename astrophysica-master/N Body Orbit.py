@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[6]:
+# In[8]:
 
 
 import numpy as np
@@ -11,8 +11,9 @@ plt.rcParams["figure.figsize"] = (20, 20) #Changes the default size of plotted f
 
 # We started with a simple 2 body orbit. Now we try to work in another body into the mix.
 # 
+# Special credit to GitHub user Morgan-W for their assistance in debugging this program.
 
-# In[39]:
+# In[33]:
 
 
 #G = 6.674 * 10 ** (-11) * (3600 * 24) ** 2 #m^3 kg^-1 day^-2
@@ -48,10 +49,20 @@ def calculate_accelerations(bodies):
 
 #The heart of the simulation.
 
-def calculate_step(bodies, t = 1):
+#def calculate_step(bodies, t = 1):
+#    x_accelerations, y_accelerations = calculate_accelerations(bodies)
+#    for i in range(0, len(bodies)):
+#        bodies[i].x_velocity = update_velocity(bodies[i].x_velocity, x_accelerations[i], t)
+#        bodies[i].y_velocity = update_velocity(bodies[i].y_velocity, y_accelerations[i], t)
+#    for i in range(0, len(bodies)):
+#        bodies[i].x_position, bodies[i].y_position = update_position(bodies[i].x_position, bodies[i].y_position, bodies[i].x_velocity, bodies[i].y_velocity, t)        
+#    return
+
+def calculate_step(bodies, t=1):
+    for i in range(0, len(bodies)):
+        bodies[i].x_position, bodies[i].y_position = update_position(bodies[i].x_position, bodies[i].y_position, bodies[i].x_velocity, bodies[i].y_velocity, t)
     x_accelerations, y_accelerations = calculate_accelerations(bodies)
     for i in range(0, len(bodies)):
-        bodies[i].x_position, bodies[i].y_position = update_position(bodies[i].x_position, bodies[i].y_position, bodies[i].x_velocity, bodies[i].y_velocity, t)        
         bodies[i].x_velocity = update_velocity(bodies[i].x_velocity, x_accelerations[i], t)
         bodies[i].y_velocity = update_velocity(bodies[i].y_velocity, y_accelerations[i], t)
     return
@@ -68,7 +79,7 @@ class body:
         
 
 
-# In[41]:
+# In[34]:
 
 
 #Initial Conditions Values taken from NASA's fact sheets on solar system bodies
@@ -82,28 +93,29 @@ M5 = 4.8675 * 10 ** 24 #kg #venus mass
 
 v_earth = (30.29 * 10 ** 3) * 3600# m/hr
 x_earth = 147.09 * 10 ** 9 #m at perihelion
-y_earth = 0 #m
+y_earth = 0.0 #m
 
 v_mars = (26.5 * 10 ** 3) * 3600 #m/hr
 x_mars = 206.62 * 10 ** 9 #m at perihelion
-y_mars = 0 #m
+y_mars = 0.0 #m
 
 v_mercury = (58.98 * 10 ** 3) * 3600 #m/hr
 x_mercury = 46.0 * 10 ** 9 #m at perihelion
-y_mercury = 0 #m
+y_mercury = 0.0 #m
 
 v_venus = (35.26 * 10 ** 3) * 3600 #m/hr
 x_venus = 107.48 * 10 ** 9 #m at perihelion
-y_venus = 0 #m
+y_venus = 0.0 #m
 
-Sun = body("Sun", M1, 0, 0, 0, 0)
-Earth = body("Earth", M2, x_earth, y_earth, 0, v_earth)
-Mars = body("Mars", M3, x_mars, y_mars, 0, v_mars)
-Mercury = body("Mercury", M4, x_mercury, y_mercury, 0, v_mercury)
-Venus = body("Venus", M5, x_venus, y_venus, 0, v_venus)
+Sun = body("Sun", M1, 0.0, 0.0, 0.0, 0.0)
+Earth = body("Earth", M2, x_earth, y_earth, 0.0, v_earth)
+Mars = body("Mars", M3, x_mars, y_mars, 0.0, v_mars)
+Mercury = body("Mercury", M4, x_mercury, y_mercury, 0.0, v_mercury)
+Venus = body("Venus", M5, x_venus, y_venus, 0.0, v_venus)
+bodies = [Sun, Earth, Mars, Mercury, Venus]
 
 
-# In[4]:
+# In[35]:
 
 
 #Creating arrays to store the data points to be plotted
@@ -134,13 +146,14 @@ for t in range(24000):
     
 
 
-# In[44]:
+# In[36]:
 
 
 plt.plot(earth_x_pos, earth_y_pos, 'b-', label = "Earth")
 plt.plot(sun_x_pos, sun_y_pos, 'y*', markersize = 45, label = "Sun")
 plt.plot(mars_x_pos, mars_y_pos, 'r-', label = "Mars")
 plt.plot(mercury_x_pos, mercury_y_pos, 'k-', label = "Mercury")
+plt.plot(x_mercury, y_mercury, 'mo', label = "Mercury Starting Position")
 plt.plot(venus_x_pos, venus_y_pos, color = 'orange', label = "Venus")
 
 
@@ -154,7 +167,9 @@ plt.title("SIMULATION: Earth, Mars, Sun")
 plt.show()
 
 
-# Above, I did an n-body simulation. As you can see, it is not perfect. Mercury's orbit seems to be decaying rapidly (on an astronomical timescale). This is an issue I am going to find a solution in. Collaborating with a fellow researcher gave me the idea that the unexpected orbits could be the result of stacked gravitational effects. 
+# Above, I did an n-body simulation. As you can see, it is not perfect. Mercury's orbit seems to be decaying rapidly (on an astronomical timescale). This is an issue I am going to find a solution in. Collaborating with a fellow researcher gave me the idea that the unexpected orbits could be the result of stacked gravitational effects. After further consideration, it is also possible that the radiation pressure due to the sun could stabilize Mercury's orbit, but Mercury is slowly moving outward. Factoring in radiation pressure should exacerbate that effect, not mitigate it. Perhaps I am not accounting for its speed properly.
+# 
+# ***Edit: It turns out, the decay was not a result of a lack of accounting for physical forces. I simply changed the order of updating position and velocity. I changed it here, in the N Body Orbit file, but I will leave it untouched in the 2 body orbit, to show the difference. The correction can be achieved either by calculating acceleration, then velocity, then position, or by calculating position, then acceleration, then velocity. The issue was a result of a "de-synchronized" acceleration being used to calculate the velocity. Put another way: the forces acting on the bodies depend heavily on their position with respect to one another. Thus, the velocity needs to be calculated after calculating the acceleration, before changing anything else. I choose to calculate the new position, then the acceleration, then the velocity because it makes physical sense. I chose the initial conditions to be at perihelion, because the max velocity of planets is well quantified (alternatively, you should be able to use aphelion and min velocity as initial conditions for the same reasons). At perihelion, the body should be travelling at maximum velocity for that instant. Thus, the new position should be calculated first, then the acceleration, then the new velocity.
 # 
 # I started all of the planets at their perihelion because it was simplest: I can research the maximum and miminimum orbital speeds of each planet in the solar system, but it would be too complicated for an educational exercise of this level to try and find the orbital speeds at arbitrary points in a planet's orbit. It is even more complicated to find true initial conditions, since that would mean going back billions of years to when everything was still in a protoplanetary disc.
 # 
